@@ -12,6 +12,18 @@ let requestQueue = Promise.resolve();
 
 async function getBrowser() {
   // If a launch is already in progress, wait for it
+  if (process.env.BROWSERLESS_TOKEN) {
+    // Production: use remote Browserless instance
+    console.log("Using Browserless");
+    return puppeteer.connect({
+      browserWSEndpoint: `wss://chrome.browserless.io?token=${process.env.BROWSERLESS_TOKEN}`,
+    });
+  }
+  // Local dev: launch normally
+  return puppeteer.launch({
+    headless: "new",
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+  });
   if (launchPromise) return launchPromise;
 
   if (browserInstance) {
