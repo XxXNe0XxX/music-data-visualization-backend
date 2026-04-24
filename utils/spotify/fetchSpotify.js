@@ -11,23 +11,25 @@ let launchPromise = null;
 let requestQueue = Promise.resolve();
 
 async function getBrowser() {
-  // If a launch is already in progress, wait for it
+  console.log("BROWSERLESS_TOKEN present:", !!process.env.BROWSERLESS_TOKEN);
+  console.log(
+    "Using:",
+    process.env.BROWSERLESS_TOKEN ? "Browserless" : "Local Puppeteer",
+  );
+
   if (process.env.BROWSERLESS_TOKEN) {
-    // Production: use remote Browserless instance
-    console.log("Using Browserless");
-    return puppeteer.connect({
+    console.log("Connecting to Browserless...");
+    const browser = await puppeteer.connect({
       browserWSEndpoint: `wss://chrome.browserless.io?token=${process.env.BROWSERLESS_TOKEN}`,
     });
+    console.log("Browserless connected successfully");
+    return browser;
   }
-  // Local dev: launch normally
-  return puppeteer.launch({
-    headless: "new",
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
-  });
+
+  // Local dev: singleton pattern to avoid multiple Chromium instances
   if (launchPromise) return launchPromise;
 
   if (browserInstance) {
-    // Verify it's still alive
     try {
       await browserInstance.version();
       return browserInstance;
@@ -44,13 +46,10 @@ async function getBrowser() {
     .then((browser) => {
       browserInstance = browser;
       launchPromise = null;
-
-      // Clean up reference if browser crashes or is closed externally
       browser.on("disconnected", () => {
         browserInstance = null;
         launchPromise = null;
       });
-
       return browser;
     })
     .catch((err) => {
@@ -130,7 +129,12 @@ export async function fetchChartPage(countryIso2) {
       return { type: "html", data: html };
     } finally {
       // Always close the page — never the whole browser
+
       await page.close().catch(() => {});
+      // disconnect() for remote, close() for local
+      if (process.env.BROWSERLESS_TOKEN) {
+        browser.disconnect();
+      }
     }
   }));
 
