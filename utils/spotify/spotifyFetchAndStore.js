@@ -54,6 +54,7 @@ export async function fetchAndStoreSpotifyCharts() {
       failed++;
       logger.warn(`[${success + failed}/${countries.length}] ${country} — FAILED: ${error.message}`);
     }
+    await new Promise((resolve) => setTimeout(resolve, 1000));
   }
 
   await fs.ensureDir(OUTPUT_DIR);
