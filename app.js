@@ -5,6 +5,7 @@ import { errorHandler } from "./middleware/errorHandler.js";
 import { requestLogger } from "./middleware/morganWinstonHandler.js";
 import dotenv from "dotenv";
 import { netflixJob } from "./utils/netflix/fetchTopWeekly10.js";
+import { spotifyChartsJob } from "./utils/spotify/spotifyFetchAndStore.js";
 
 dotenv.config();
 const app = express();
@@ -22,6 +23,7 @@ app.use("/api", routes);
 app.use(errorHandler);
 
 netflixJob();
+spotifyChartsJob();
 
 app.listen(process.env.PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${process.env.PORT}`);

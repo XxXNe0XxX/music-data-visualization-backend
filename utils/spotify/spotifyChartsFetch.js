@@ -11,13 +11,13 @@ const CHARTS_BASE_URL =
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
-function getChartDate() {
+export function getChartDate() {
   const date = new Date();
   date.setDate(date.getDate() - 2);
   return date.toISOString().split("T")[0];
 }
 
-async function getWebAccessToken() {
+export async function getWebAccessToken() {
   const spDc = process.env.SP_DC?.trim();
   if (!spDc) throw new Error("SP_DC must be set in .env");
 
@@ -68,8 +68,7 @@ async function getWebAccessToken() {
   }
 }
 
-export async function fetchSpotifyCharts(countryIso2 = "at") {
-  const token = await getWebAccessToken();
+export async function fetchSpotifyChartsByToken(token, countryIso2 = "at") {
   const date = getChartDate();
   const chartId = `regional-${countryIso2.toLowerCase()}-daily`;
   const url = `${CHARTS_BASE_URL}/${chartId}/${date}`;
@@ -85,4 +84,9 @@ export async function fetchSpotifyCharts(countryIso2 = "at") {
   });
 
   return response.data;
+}
+
+export async function fetchSpotifyCharts(countryIso2 = "at") {
+  const token = await getWebAccessToken();
+  return fetchSpotifyChartsByToken(token, countryIso2);
 }

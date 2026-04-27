@@ -1,5 +1,5 @@
 import { logger } from "../config/winstonConfig.js";
-import { fetchSpotifyCharts } from "../utils/spotify/spotifyChartsFetch.js";
+import { readStoredCharts, fetchAndStoreSpotifyCharts } from "../utils/spotify/spotifyFetchAndStore.js";
 
 export async function getTop10ByCountry(req, res, next) {
   try {
@@ -12,30 +12,39 @@ export async function getTop10ByCountry(req, res, next) {
       });
     }
 
-    const chartData = await fetchSpotifyCharts(country);
-    const top10 = chartData.entries.slice(0, 10).map((entry) => {
-      const { chartEntryData, trackMetadata } = entry;
-      return {
-        rank: chartEntryData.currentRank,
-        previousRank: chartEntryData.previousRank,
-        peakRank: chartEntryData.peakRank,
-        entryStatus: chartEntryData.entryStatus,
-        streams: Number(chartEntryData.rankingMetric.value),
-        trackId: trackMetadata.trackUri.split(":").pop(),
-        trackName: trackMetadata.trackName,
-        imageUrl: trackMetadata.displayImageUri,
-        releaseDate: trackMetadata.releaseDate,
-        artists: trackMetadata.artists.map((a) => ({
-          name: a.name,
-          id: a.spotifyUri.split(":").pop(),
-        })),
-        labels: trackMetadata.labels.map((l) => l.name),
-      };
-    });
+    const stored = readStoredCharts();
 
-    res.json({ success: true, country: country.toLowerCase(), data: top10 });
+    if (!stored) {
+      return res.status(503).json({
+        success: false,
+        message: "Chart data is not available yet. Try again shortly or call /api/spotify/refresh.",
+      });
+    }
+
+    const countryKey = country.toLowerCase();
+    const data = stored.data?.[countryKey];
+
+    if (!data) {
+      return res.status(404).json({
+        success: false,
+        message: `No chart data found for country '${country.toUpperCase()}'. It may not be supported.`,
+      });
+    }
+
+    res.json({ success: true, country: countryKey, date: stored.date, fetchedAt: stored.fetchedAt, data });
   } catch (error) {
     logger.error(`Error in getTop10ByCountry: ${error.message}`);
+    next(error);
+  }
+}
+
+export async function refreshSpotifyCharts(req, res, next) {
+  try {
+    logger.info("Manual Spotify charts refresh triggered via API");
+    res.json({ success: true, message: "Spotify charts refresh started. This may take several minutes." });
+    await fetchAndStoreSpotifyCharts();
+  } catch (error) {
+    logger.error(`Error in refreshSpotifyCharts: ${error.message}`);
     next(error);
   }
 }
